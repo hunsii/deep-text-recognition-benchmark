@@ -44,6 +44,8 @@ def demo(opt):
     # predict
     model.eval()
     with torch.no_grad():
+        log_pred = open(opt.output_name, 'w')
+        log_pred.write('img_name,text,confidence\n')
         for image_tensors, image_path_list in demo_loader:
             batch_size = image_tensors.size(0)
             image = image_tensors.to(device)
@@ -88,8 +90,10 @@ def demo(opt):
 
                 print(f'{img_name:25s}\t{pred:25s}\t{confidence_score:0.4f}')
                 log.write(f'{img_name:25s}\t{pred:25s}\t{confidence_score:0.4f}\n')
+                log_pred.write(f'{img_name},{pred},{confidence_score}\n')
 
             log.close()
+        log_pred.close()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -106,17 +110,24 @@ if __name__ == '__main__':
     parser.add_argument('--sensitive', action='store_true', help='for sensitive character mode')
     parser.add_argument('--PAD', action='store_true', help='whether to keep ratio then pad for image resize')
     """ Model Architecture """
-    parser.add_argument('--Transformation', type=str, required=True, help='Transformation stage. None|TPS')
-    parser.add_argument('--FeatureExtraction', type=str, required=True, help='FeatureExtraction stage. VGG|RCNN|ResNet')
-    parser.add_argument('--SequenceModeling', type=str, required=True, help='SequenceModeling stage. None|BiLSTM')
-    parser.add_argument('--Prediction', type=str, required=True, help='Prediction stage. CTC|Attn')
+    parser.add_argument('--Transformation', type=str, default='TPS', help='Transformation stage. None|TPS')
+    parser.add_argument('--FeatureExtraction', type=str, default='ResNet', help='FeatureExtraction stage. VGG|RCNN|ResNet')
+    parser.add_argument('--SequenceModeling', type=str, default='BiLSTM', help='SequenceModeling stage. None|BiLSTM')
+    parser.add_argument('--Prediction', type=str, default='Attn', required=True, help='Prediction stage. CTC|Attn')
     parser.add_argument('--num_fiducial', type=int, default=20, help='number of fiducial points of TPS-STN')
     parser.add_argument('--input_channel', type=int, default=1, help='the number of input channel of Feature extractor')
     parser.add_argument('--output_channel', type=int, default=512,
                         help='the number of output channel of Feature extractor')
     parser.add_argument('--hidden_size', type=int, default=256, help='the size of the LSTM hidden state')
+    parser.add_argument('--language', type=str, default='ko-sh', help='language')
+    parser.add_argument('--output_name', type=str, required=True, help='output pred filename')
 
     opt = parser.parse_args()
+
+    if opt.language == 'ko-sh':
+        with open('character/ko.txt', 'r', encoding='utf-8') as f:
+            opt.character = f.read()
+            
 
     """ vocab / character number configuration """
     if opt.sensitive:
